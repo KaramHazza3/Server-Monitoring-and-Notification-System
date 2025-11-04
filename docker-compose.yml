@@ -1,0 +1,80 @@
+﻿version: "3.9"
+
+services:
+  monitoringandnotificationsystem.serverstatisticscollectionservice:
+    container_name: monitoring_server_statistics_collection
+    image: monitoringandnotificationsystem/serverstatisticscollectionservice:latest
+    build:
+      context: .
+      dockerfile: MonitoringAndNotificationSystem.ServerStatisticsCollectionService/Dockerfile
+    env_file:
+      - MonitoringAndNotificationSystem.ServerStatisticsCollectionService/.env
+    depends_on:
+      - monitoringandnotificationsystem.rabbitmq
+    networks:
+      - monitoringandnotificationsystem
+    restart: unless-stopped
+
+  monitoringandnotificationsystem.messageprocessingandanomalydetectionservice:
+    container_name: monitoring_message_processing_and_anomaly_detection
+    image: monitoringandnotificationsystem/messageprocessingandanomalydetectionservice:latest
+    build:
+      context: .
+      dockerfile: MonitoringAndNotificationSystem.MessageProcessingAndAnomalyDetectionService/Dockerfile
+    ports:
+      - "5000:5000"
+    env_file:
+      - MonitoringAndNotificationSystem.MessageProcessingAndAnomalyDetectionService/.env
+    depends_on:
+      - monitoringandnotificationsystem.rabbitmq
+      - monitoringandnotificationsystem.mongo
+    networks:
+      - monitoringandnotificationsystem
+    restart: unless-stopped
+  
+  monitoringandnotificationsystem.signalrclientapp:
+    container_name: monitoring_signalr_client_app
+    image: monitoringandnotificationsystem/signalrclientapp:latest
+    build:
+      context: .
+      dockerfile: MonitoringAndNotificationSystem.SignalRClientApp/Dockerfile
+    env_file:
+      - MonitoringAndNotificationSystem.SignalRClientApp/.env
+    depends_on:
+      - monitoringandnotificationsystem.rabbitmq
+      - monitoringandnotificationsystem.serverstatisticscollectionservice
+      - monitoringandnotificationsystem.messageprocessingandanomalydetectionservice
+    networks:
+      - monitoringandnotificationsystem
+    restart: unless-stopped
+
+  monitoringandnotificationsystem.mongo:
+    container_name: monitoring_mongo
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    networks:
+      - monitoringandnotificationsystem
+    volumes:
+      - mongo:/data/db
+    restart: unless-stopped
+  
+  monitoringandnotificationsystem.rabbitmq:
+    container_name: monitoring_rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "8080:15672"
+    networks:
+      - monitoringandnotificationsystem
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+    restart: unless-stopped
+
+networks:
+  monitoringandnotificationsystem:
+    driver: bridge
+
+volumes:
+  mongo:
+  rabbitmq:
